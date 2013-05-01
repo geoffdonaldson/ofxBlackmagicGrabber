@@ -9,72 +9,65 @@
 #define OFXBLACKMAGICGRABBER_H_
 
 #include "DeckLinkAPI.h"
-#include "ofBaseTypes.h"
+#include "ofMain.h"
+#include "MSAOpenCL.h"
 
-class ofxBlackmagicGrabber: public ofBaseVideoGrabber, public IDeckLinkInputCallback {
+
+class ofxBlackmagicGrabber: public ofBaseVideoGrabber, public IDeckLinkInputCallback
+{
 public:
 	ofxBlackmagicGrabber();
-	virtual ~ofxBlackmagicGrabber();
+	~ofxBlackmagicGrabber();
 
 	//specific blackmagic
-
 	void setVideoMode(_BMDDisplayMode videoMode);
-	void setDeinterlace(bool deinterlace);
 
 	virtual HRESULT STDMETHODCALLTYPE VideoInputFormatChanged(BMDVideoInputFormatChangedEvents, IDeckLinkDisplayMode*, BMDDetectedVideoInputFormatFlags);
 	virtual HRESULT STDMETHODCALLTYPE VideoInputFrameArrived(IDeckLinkVideoInputFrame * videoFrame, IDeckLinkAudioInputPacket * audioFrame);
 	virtual HRESULT QueryInterface(REFIID, void**){}
 	virtual ULONG AddRef(){}
 	virtual ULONG Release(){}
+    
 	// common ofBaseVideoGrabber
-
 	void	listDevices();
 	bool	initGrabber(int w, int h);
 	void	update();
+    void	close();
+
 	bool	isFrameNew();
 
 	unsigned char 	* getPixels();
 	ofPixels & getPixelsRef();
-
-	void	close();
-
+    ofTexture & getTextureReference();
+    
 	float	getHeight();
 	float	getWidth();
 
 	void setVerbose(bool bTalkToMe);
 	void setDeviceID(int _deviceID);
 	void setDesiredFrameRate(int framerate);
-	void videoSettings();
-	void setPixelFormat(ofPixelFormat pixelFormat);
+	bool setPixelFormat(ofPixelFormat pixelFormat);
 	ofPixelFormat getPixelFormat();
 
 	static string LOG_NAME;
 
 private:
-	IDeckLink 					*deckLink;
-	IDeckLinkInput				*deckLinkInput;
-	IDeckLinkDisplayMode		*displayMode;
-	BMDVideoInputFlags			inputFlags;
-	BMDDisplayMode				selectedDisplayMode;
-	BMDPixelFormat				pixelFormat;
+	IDeckLink 				*deckLink;
+	IDeckLinkInput			*deckLinkInput;
+	IDeckLinkDisplayMode	*displayMode;
+            
+	BMDVideoInputFlags		inputFlags;
+	BMDDisplayMode			selectedDisplayMode;
+	BMDPixelFormat			pixelFormat;
 
 	BMDTimecodeFormat		g_timecodeFormat;
 	int						g_videoModeIndex;
 	int						g_audioChannels;
 	int						g_audioSampleDepth;
 
-	ofPixels				pixels[2];
-	ofPixels *				currentPixels;
-	ofPixels *				backPixels;
 	unsigned long			frameCount;
-
-	void yuvToRGB(IDeckLinkVideoInputFrame * videoFrame);
-	void CreateLookupTables();
-	void deinterlace();
-
-	unsigned char           red[256][256];
-	unsigned char           blue[256][256];
-	unsigned char           green[256][256][256];
+    unsigned char *         yuvUChar;
+    unsigned char *         rgbUChar;
 
 	bool 					bNewFrameArrived;
 	bool					bIsNewFrame;
@@ -82,8 +75,11 @@ private:
 	ofMutex					pixelsMutex;
 
 	int						deviceID;
-
-	bool					bDeinterlace;
+    
+    msa::OpenCL             openCL;
+    msa::OpenCLImage        rgbImage;
+    msa::OpenCLBuffer       yuvImage;
+    
 };
 
 #endif /* OFXBLACKMAGICGRABBER_H_ */
