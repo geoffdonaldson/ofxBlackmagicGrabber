@@ -12,7 +12,6 @@
 #include "ofMain.h"
 #include "MSAOpenCL.h"
 
-
 class ofxBlackmagicGrabber: public ofBaseVideoGrabber, public IDeckLinkInputCallback
 {
 public:
@@ -68,6 +67,7 @@ private:
 	unsigned long			frameCount;
     unsigned char *         yuvUChar;
     unsigned char *         rgbUChar;
+    ofPixels                pixels;
 
 	bool 					bNewFrameArrived;
 	bool					bIsNewFrame;

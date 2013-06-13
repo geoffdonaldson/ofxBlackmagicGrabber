@@ -24,6 +24,8 @@
 // SOFTWARE.
 
 #include "ofxBlackmagicGrabber.h"
+#include "image_formats.cl.h"
+
 #include "Poco/ScopedLock.h"
 
 string ofxBlackmagicGrabber::LOG_NAME="ofxBlackmagicGrabber";
@@ -158,7 +160,7 @@ bool ofxBlackmagicGrabber::initGrabber(int w, int h)
     
     openCL.setupFromOpenGL();
     rgbImage.initWithTexture(displayMode->GetWidth(), displayMode->GetHeight(), GL_RGBA);
-	openCL.loadProgramFromFile("image_formats.cl");
+	openCL.loadProgramFromSource(image_conversions);
     openCL.loadKernel("convert_b_yuyv_i_rgb");
     yuvImage.initBuffer(displayMode->GetWidth()*displayMode->GetHeight()*2);
     
@@ -236,11 +238,20 @@ ofPixelFormat ofxBlackmagicGrabber::getPixelFormat()
 
 unsigned char * ofxBlackmagicGrabber::getPixels()
 {
-    return NULL;
+    return getPixelsRef().getPixels();
 }
 
 ofPixels & ofxBlackmagicGrabber::getPixelsRef()
 {
+    
+    if (!pixels.isAllocated())
+    {
+        pixels.allocate(getWidth(), getHeight(), 4);
+    }
+    
+    rgbImage.read(pixels.getPixels());
+    
+    return pixels;
 }
 
 ofTexture & ofxBlackmagicGrabber::getTextureReference()
@@ -344,7 +355,7 @@ HRESULT ofxBlackmagicGrabber::VideoInputFrameArrived(IDeckLinkVideoInputFrame * 
             << "] - Valid Frame - Size: " << (videoFrame->GetRowBytes() * videoFrame->GetHeight()) << " bytes";
             
             videoFrame->GetBytes((void**)&yuvUChar);
-            yuvImage.write(yuvUChar, 0, videoFrame->GetRowBytes() * videoFrame->GetHeight());
+            yuvImage.write(yuvUChar, 0, displayMode->GetWidth()*displayMode->GetHeight()*2);
             
             uint w = videoFrame->GetWidth();
             uint h = videoFrame->GetHeight();
