@@ -395,6 +395,9 @@ HRESULT ofxBlackmagicGrabber::VideoInputFrameArrived(IDeckLinkVideoInputFrame * 
 
 #pragma mark - BMD Information
 
+
+
+
 static void	print_attributes (IDeckLink* deckLink)
 {
 	IDeckLinkAttributes*				deckLinkAttributes = NULL;
@@ -783,3 +786,104 @@ void ofxBlackmagicGrabber::listDevices()
 		ofLogError(LOG_NAME) <<  "No Blackmagic Design devices were found.";
     
 }
+
+
+bool determinePorts(DECKLINK_CARD_TYPE type, int * portList)
+{
+	IDeckLinkIterator*		deckLinkIterator;
+	IDeckLink*				deckLink;
+	int						numDevices = 0;
+    int                     portIndex = 0;
+	HRESULT					result;
+    bool                    found = false;
+    
+	// Create an IDeckLinkIterator object to enumerate all DeckLink cards in the system
+	deckLinkIterator = CreateDeckLinkIteratorInstance();
+	if (deckLinkIterator == NULL)
+    {
+		cout <<  "A DeckLink iterator could not be created.  The DeckLink drivers may not be installed.";
+	}
+    
+	// Enumerate all cards in this system
+	while (deckLinkIterator->Next(&deckLink) == S_OK)
+    {
+		CFStringRef deviceNameString = NULL;
+		// Increment the total number of DeckLink cards found
+		numDevices++;
+        
+		// *** Print the model name of the DeckLink card        
+        
+        IDeckLinkAttributes*				deckLinkAttributes = NULL;
+        bool								supported;
+        int64_t								count;
+        int64_t                             index;
+        CFStringRef                         serialPortName = NULL;
+        HRESULT								result;
+        
+        // Query the DeckLink for its attributes interface
+        result = deckLink->QueryInterface(IID_IDeckLinkAttributes, (void**)&deckLinkAttributes);
+        if (result != S_OK)
+        {
+            fprintf(stderr, "Could not obtain the IDeckLinkAttributes interface - result = %08ld\n", result);
+            goto bail;
+        }
+
+        result = deckLinkAttributes->GetInt(BMDDeckLinkNumberOfSubDevices, &count);
+        if (result == S_OK)
+        {
+            if (count != 0 & count == type)
+            {                
+                result = deckLinkAttributes->GetInt(BMDDeckLinkSubDeviceIndex, &index);
+                if (result == S_OK)
+                {                    
+                    portList[index] = numDevices - 1;
+                    
+                    result = deckLink->GetModelName(&deviceNameString);
+                    if (result == S_OK)
+                    {
+                        char   deviceName[64];
+                        CFStringGetCString(deviceNameString, deviceName, sizeof(deviceName), kCFStringEncodingMacRoman);
+                        printf("\n\n=============== %s ===============\n\n", deviceName);
+                        CFRelease(deviceNameString);
+                    }
+
+                    printf(" %-40s %lld\n", "Number of sub-devices:",  count);
+                    printf(" %-40s %lld\n", "Sub-device index:",  index);
+                    
+                    found = true;
+                    
+                }
+                else
+                {
+                    fprintf(stderr, "Could not query the sub-device index attribute- result = %08ld\n", result);
+                }
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Could not query the number of sub-device attribute- result = %08ld\n", result);
+        }
+        
+        bail:
+            if(deckLinkAttributes != NULL)
+                deckLinkAttributes->Release();
+
+        deckLink->Release();
+	}
+    
+    // Release the IDeckLink instance when we've finished with it to prevent leaks
+	deckLinkIterator->Release();
+    
+	// If no DeckLink cards were found in the system, inform the user
+	if (!found)
+    {
+		cout <<  "No Blackmagic Design devices were found for type [" << type << "]. " <<  endl;
+        return false;
+    }
+    
+    return true;
+    
+}
+
+
+

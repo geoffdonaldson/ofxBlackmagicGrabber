@@ -12,9 +12,20 @@
 #include "ofMain.h"
 #include "MSAOpenCL.h"
 
+typedef enum {
+    DECKLINK_SDI  = 1,
+    DECKLINK_DUO  = 2,
+    DECKLINK_QUAD = 4
+} DECKLINK_CARD_TYPE;
+
+bool determinePorts(DECKLINK_CARD_TYPE type, int * portList);
+
 class ofxBlackmagicGrabber: public ofBaseVideoGrabber, public IDeckLinkInputCallback
 {
 public:
+    
+
+    
 	ofxBlackmagicGrabber();
 	~ofxBlackmagicGrabber();
 
